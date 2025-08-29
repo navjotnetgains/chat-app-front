@@ -20,7 +20,7 @@ const LoginPage = () => {
     const res = await fetch('/api/login', {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+      "Content-Type": "application/json",
       },
       body: JSON.stringify(form),
     });
@@ -28,7 +28,7 @@ const LoginPage = () => {
     const result = await res.json();
 
     if (res.status === 200) {
-      router.push('/');
+      router.push('/chat');
     } else {
       setError(result.message || "Login failed");
     }
@@ -68,11 +68,10 @@ const LoginPage = () => {
           >
             Login
           </button>
-<p className="text-center text-sm text-gray-600 mt-6">
-        not have an account?{" "}
+          <p className="text-center text-sm text-gray-600 mt-6">
+           not have an account?{" "}
           <a href="/signup" className="text-blue-600 hover:underline">signup</a>
         </p>
-          
         </div>
       </div>
     </div>

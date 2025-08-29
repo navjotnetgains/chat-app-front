@@ -5,9 +5,9 @@ import User from "@/models/user";
 
 export async function POST(req) {
 
-    const { email, password, name } = await req.json();
+    const { email, password, username } = await req.json();
 
-    if (!email && !password && !name) {
+    if (!email && !password && !username) {
         return Response.json({ message: "enter email and passowrd" }, { status: 400 })
     }
 
@@ -22,6 +22,7 @@ export async function POST(req) {
  }
 
  const newUser= new User({
+    username,
     email,
     password
  })

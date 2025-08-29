@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 const SignupPage = () => {
   const router = useRouter();
   const [form, setForm] = useState({
-    name: "",
+    username: "",
     email: "",
     password: ""
   });
@@ -46,8 +46,8 @@ const SignupPage = () => {
 
         <div className="space-y-4">
           <input
-            value={form.name}
-            name="name"
+            value={form.username}
+            name="username"
             type="text"
             placeholder="Full Name"
             onChange={handleChange}

@@ -1,30 +1,48 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function ChatPage() {
   const [ws, setWs] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const router = useRouter();
 
   useEffect(() => {
-    const socket = new WebSocket("ws://localhost:8080");
+    const checkSession = async () => {
+      try {
+        // get session + token
+        const res = await fetch("/api/session", { credentials: "include" });
+        const data = await res.json();
 
-    socket.onopen = () => {
-      console.log("✅ Connected to WebSocket");
+        if (!data.user || !data.token) {
+          router.push("/login");
+          return;
+        }
+
+        // pass token in query string
+        const socket = new WebSocket(`ws://localhost:8080?token=${data.token}`);
+
+        
+
+        socket.onopen = () => console.log("✅ Connected to chat");
+        socket.onmessage = (event) => {
+          const msg = JSON.parse(event.data);
+          setMessages((prev) => [...prev, `${msg.user}: ${msg.text}`]);
+        };
+        socket.onclose = () => console.log("❌ Disconnected from chat");
+
+        setWs(socket);
+
+        return () => socket.close();
+      } catch (err) {
+        console.error("Session check failed", err);
+        router.push("/login");
+      }
     };
 
-    socket.onmessage = (event) => {
-      setMessages((prev) => [...prev, event.data]);
-    };
-
-    socket.onclose = () => {
-      console.log("❌ Disconnected");
-    };
-
-    setWs(socket);
-
-    return () => socket.close();
-  }, []);
+    checkSession();
+  }, [router]);
 
   const sendMessage = () => {
     if (ws && input.trim() !== "") {

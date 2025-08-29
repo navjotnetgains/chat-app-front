@@ -28,6 +28,7 @@ export async function POST(req) {
       expiresIn: "1h",
     });
 
+    console.log(token)
 cookieStore.set('token',token, {
      secure:true         
     })
