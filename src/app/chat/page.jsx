@@ -25,7 +25,7 @@ export default function ChatPage() {
 
         setCurrentUser(data.user);
 
-        console.log("current",currentUser,data.user)
+       
         
         const usersRes = await fetch("/api/login", { credentials: "include" });
         const usersData = await usersRes.json();
@@ -64,7 +64,7 @@ export default function ChatPage() {
  <div className="w-64 border rounded p-3 bg-gray-50">
         <h2 className="font-semibold mb-2">Online Users</h2>
         <ul className="space-y-1">
-          {users.filter((use)=>use.id!=currentUser.id).map((user) => (
+          {users.filter((use)=>use._id!=currentUser.id).map((user) => (
             <li
               key={user._id}
               className="p-2 bg-white rounded shadow text-sm"
