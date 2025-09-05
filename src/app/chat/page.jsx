@@ -6,7 +6,10 @@ export default function ChatPage() {
   const [ws, setWs] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const [users,setUsers]=useState([]);
   const router = useRouter();
+  const [currentUser,setCurrentUser]=useState("");
+  const [selectedUser,setSelectedUser]=useState("");
 
   useEffect(() => {
     const checkSession = async () => {
@@ -17,14 +20,19 @@ export default function ChatPage() {
 
         if (!data.user || !data.token) {
           router.push("/login");
-          return;
+          return; 
         }
+
+        setCurrentUser(data.user);
+
+        console.log("current",currentUser,data.user)
+        
+        const usersRes = await fetch("/api/login", { credentials: "include" });
+        const usersData = await usersRes.json();
+        setUsers(usersData.users || []);
 
         // pass token in query string
         const socket = new WebSocket(`ws://localhost:8080?token=${data.token}`);
-
-        
-
         socket.onopen = () => console.log("✅ Connected to chat");
         socket.onmessage = (event) => {
           const msg = JSON.parse(event.data);
@@ -52,6 +60,21 @@ export default function ChatPage() {
   };
 
   return (
+    <div className="flex">
+ <div className="w-64 border rounded p-3 bg-gray-50">
+        <h2 className="font-semibold mb-2">Online Users</h2>
+        <ul className="space-y-1">
+          {users.filter((use)=>use.id!=currentUser.id).map((user) => (
+            <li
+              key={user._id}
+              className="p-2 bg-white rounded shadow text-sm"
+            >
+              {user.email}
+            </li>
+          ))}
+        </ul>
+      </div>
+
     <div className="flex flex-col items-center p-4">
       <h1 className="text-xl font-bold mb-4">Simple Chat</h1>
 
@@ -78,6 +101,7 @@ export default function ChatPage() {
           Send
         </button>
       </div>
+    </div>
     </div>
   );
 }
