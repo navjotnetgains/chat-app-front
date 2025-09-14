@@ -1,50 +1,69 @@
-import { WebSocketServer } from "ws";
+import WebSocket, { WebSocketServer } from "ws";
 import jwt from "jsonwebtoken";
-import cookie from "cookie";
-import { URL } from "url";
 import dotenv from "dotenv";
+import messageSchema from "./src/models/messageSchema.js";
+import mongoose from "mongoose";
 
-dotenv.config(); // Load .env variables
-const SECRET = process.env.JWT_SECRET || "fallback_secret"; // fallback for dev
+// ✅ Load .env file so JWT_SECRET is available
+dotenv.config();
+
+//connect mongodb
+mongoose.connect(process.env.MONGO_URL, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
 
 const wss = new WebSocketServer({ port: 8080 });
+const clients = new Map(); // store userId -> ws
 
 wss.on("connection", (ws, req) => {
+  const params = new URLSearchParams(req.url.split("?")[1]);
+  const token = params.get("token");
+
+  let userId;
   try {
-    // Parse query params
-    const url = new URL(req.url, `http://${req.headers.host}`);
-    const tokenFromQuery = url.searchParams.get("token");
+    console.log("WS JWT_SECRET:", process.env.JWT_SECRET); // debug
+    console.log("Incoming token:", token); // debug
 
-    // Parse cookies
-    const cookies = cookie.parse(req.headers.cookie || "");
-    const tokenFromCookie = cookies.token;
-
-    // Prefer query string token, fallback to cookie
-    const token = tokenFromQuery || tokenFromCookie;
-    if (!token) throw new Error("No token provided");
-
-    // Verify JWT
-    const decoded = jwt.verify(token, SECRET);
-    console.log("✅ Authenticated user:", decoded);
-
-    ws.user = decoded;
-    ws.send(JSON.stringify({ user: "server", text: `Welcome ${decoded.email}` }));
-
-    // Handle incoming messages
-    ws.on("message", (msg) => {
-      console.log(`📩 ${ws.user.email}: ${msg.toString()}`);
-
-      // Broadcast to all connected clients
-      wss.clients.forEach((client) => {
-        if (client.readyState === ws.OPEN) {
-          client.send(JSON.stringify({ user: ws.user.email, text: msg.toString() }));
-        }
-      });
-    });
-
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    userId = decoded._id;
+    clients.set(userId, ws);
+    console.log("✅ User connected:", userId);
   } catch (err) {
     console.error("❌ Invalid token:", err.message);
-    ws.send(JSON.stringify({ user: "server", text: "Authentication failed. Disconnecting..." }));
     ws.close();
+    return;
   }
+
+  ws.on("message", async (message) => {
+    try {
+      const data = JSON.parse(message);
+      console.log(data)
+
+     const newMsg = new messageSchema({
+        from: data.from,
+        to: data.to,
+        text: data.text || null,
+        mediaUrl: data.mediaUrl || null,   
+        mediaType: data.mediaType || null,
+      });
+      await newMsg.save();
+
+      // find recipient
+      const recipientWs = clients.get(data.to);
+      if (recipientWs) {
+        recipientWs.send(JSON.stringify(data));
+      }
+
+      // also echo back to sender so they see their own msg
+      ws.send(JSON.stringify(data));
+    } catch (err) {
+      console.error("Invalid message format:", err);
+    }
+  });
+
+  ws.on("close", () => {
+    clients.delete(userId);
+    console.log("❌ User disconnected:", userId);
+  });
 });

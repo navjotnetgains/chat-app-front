@@ -31,6 +31,4 @@ export async function POST(req) {
 
 
  return Response.json({message:"user successfully created "},{status:201})
-
-
 }
