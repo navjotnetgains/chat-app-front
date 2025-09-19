@@ -18,7 +18,7 @@ const SignupPage = () => {
   const handleSubmit = async () => {
     setError("");
 
-    const res = await fetch('/api/signup', {
+    const res = await fetch('http://localhost:4000/api/signup', {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

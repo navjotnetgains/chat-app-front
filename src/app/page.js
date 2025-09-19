@@ -1,103 +1,230 @@
-import Image from "next/image";
+  "use client";
+  import { useEffect, useState } from "react";
+  import { useRouter } from "next/navigation";
+  import { IoSend } from "react-icons/io5";
+  import { CgAttachment } from "react-icons/cg";
 
-export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  export default function ChatPage() {
+    const [ws, setWs] = useState(null);
+    const [messages, setMessages] = useState([]);
+    const [input, setInput] = useState("");
+    const [users, setUsers] = useState([]);
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [currentUser, setCurrentUser] = useState(null);
+    const [selectedImage,setSelectedIamge]=useState(null);
+    const router = useRouter();
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    useEffect(() => {
+      const checkSession = async () => {
+        try {
+          const res = await fetch("http://localhost:4000/api/session", { method: "GET", credentials: "include" });
+          console.log(res)
+          const data = await res.json();
+          if (!data.user || !data.token) {
+            router.push("/login");
+            return;
+          }
+          setCurrentUser(data.user);
+
+          const usersRes = await fetch("http://localhost:4000/api/users", { credentials: "include" });
+          const usersData = await usersRes.json();
+          setUsers(usersData.users || []);
+
+        const socket = new WebSocket(`ws://localhost:4000?token=${data.token}`);
+          socket.onopen = () => console.log("✅ Connected to chat");
+          socket.onmessage = (event) => {
+            const msg = JSON.parse(event.data);
+            if (msg.to === data.user._id || msg.from === data.user._id) {
+              setMessages((prev) => [...prev, msg]);
+            }
+          };
+          socket.onclose = () => console.log("❌ Disconnected from chat");
+          setWs(socket);
+          return () => socket.close();
+        } catch (err) {
+          console.error("Session check failed", err);
+          router.push("/login");
+        }
+      };
+      checkSession();
+    }, [router]);
+
+    const sendMessage = () => {
+      if (ws && input.trim() !== "" && selectedUser) {
+        const messageObj = {
+          from: currentUser._id,
+          to: selectedUser._id,
+          text: input,
+        };
+        ws.send(JSON.stringify(messageObj));
+        setInput("");
+      }
+    };
+
+    const handleSelect = async (user) => {
+      setSelectedUser(user);
+      const res = await fetch(`http://localhost:4000/api/messages/${user._id}`,{method:'GET', credentials:"include"});
+      const data = await res.json();
+      setMessages(data.messages || []);
+    };
+
+    const handleFileUpload = async (e) => {
+  const file = e.target.files[0];
+  if (!file || !selectedUser) return;
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch("http://localhost:4000/api/upload", { method: "POST", body: formData });
+  const data = await res.json();
+  if (ws) {
+    const messageObj = {
+      from: currentUser._id,
+      to: selectedUser._id,
+      mediaUrl: data.url,              // <-- use url instead of path
+      mediaType: data.type.startsWith("image") ? "image" : "file",
+    };
+    ws.send(JSON.stringify(messageObj));
+  }
+};
+
+    return (
+      <div className="flex h-screen bg-gray-100">
+        {/* Sidebar */}
+        <div
+          className={`w-full md:w-1/4 bg-white border-r flex flex-col ${
+            selectedUser ? "hidden md:flex" : "flex"
+          }`}
+        >
+          <div className="p-4 border-b font-bold text-lg">Chats</div>
+          <div className="flex-1 overflow-y-auto">
+            {users
+              .filter((u) => u._id !== currentUser?._id)
+              .map((user) => (
+                <div
+                  key={user._id}
+                  onClick={() => handleSelect(user)}
+                  className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-100 ${
+                    selectedUser?._id === user._id ? "bg-gray-200" : ""
+                  }`}
+                >
+                  <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
+                    {user.username.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="font-medium">{user.username}</p>
+                    <p className="text-xs text-gray-500">Click to chat</p>
+                  </div>
+                </div>
+              ))}
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+
+        {/* Chat area */}
+        <div
+          className={`flex flex-col flex-1 ${
+            !selectedUser ? "hidden md:flex" : "flex"
+          }`}
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
-}
+          {/* Chat header */}
+          <div className="flex items-center gap-3 p-4 border-b bg-white shadow-sm">
+            {/* Back button for mobile */}
+            <button
+              onClick={() => setSelectedUser(null)}
+              className="md:hidden text-xl"
+            >
+              ←
+            </button>
+
+            {selectedUser ? (
+              <>
+                <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white font-bold">
+                  {selectedUser.username.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p className="font-medium">{selectedUser.username}</p>
+                  <p className="text-xs text-gray-500">online</p>
+                </div>
+              </>
+            ) : (
+              <p className="text-gray-500">Select a user to start chatting</p>
+            )}
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-chat-pattern">
+            {messages
+              .filter(
+                (m) =>
+                  (m.from === currentUser?._id && m.to === selectedUser?._id) ||
+                  (m.from === selectedUser?._id && m.to === currentUser?._id)
+              )
+              .map((msg, i) => (
+                <div
+                  key={i}
+                  className={`max-w-xs p-2 rounded-lg shadow break-words ${
+                    msg.from === currentUser?._id
+                      ? "ml-auto bg-green-200"
+                      : "mr-auto bg-white"
+                  }`}
+                >
+                  {msg.text && <p>{msg.text}</p>}
+                  {msg.mediaUrl && msg.mediaType === "image" && (
+                    <img
+                      src={msg.mediaUrl}
+                      alt="media"
+                      className="max-w-[150px] rounded mt-1"
+                    />
+                  )}
+                  {msg.mediaUrl && msg.mediaType !== "image" && (
+                    <a
+                      href={msg.mediaUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline mt-1 block"
+                    >
+                      <CgAttachment />
+                    </a>
+                  )}
+                  <p className="text-[10px] text-gray-500 text-right mt-1">
+                    {new Date().toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                </div>
+              ))}
+          </div>
+
+          {/* Input area */}
+          {selectedUser && (
+            <div className="flex items-center gap-2 p-3 border-t bg-white">
+              <input
+                type="file"
+                id="fileInput"
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+              <label
+                htmlFor="fileInput"
+                className="cursor-pointer text-gray-500 hover:text-gray-700"
+              >
+                <CgAttachment />
+              </label>
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                className="flex-1 border rounded-full px-4 py-2 focus:outline-none bg-gray-100"
+                placeholder="Type a message..."
+              />
+              <button
+                onClick={sendMessage}
+                className="bg-green-500 text-white px-4 py-2 rounded-full hover:bg-green-600"
+              >
+              <IoSend/>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
