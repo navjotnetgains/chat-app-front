@@ -17,7 +17,7 @@ const LoginPage = () => {
   const handleSubmit = async () => {
     setError("");
 
-    const res = await fetch(`${process.env.APP_URL}/api/login`, {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/login`, {
       method: "POST",
       headers: {
       "Content-Type": "application/json",
@@ -29,7 +29,7 @@ const LoginPage = () => {
     const result = await res.json();
 
     if (res.status === 200) {
-      router.push('/chat');
+      router.push('/');
     } else {
       setError(result.message || "Login failed");
     }

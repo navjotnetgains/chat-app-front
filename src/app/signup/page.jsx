@@ -18,7 +18,7 @@ const SignupPage = () => {
   const handleSubmit = async () => {
     setError("");
 
-    const res = await fetch(`${process.env.APP_URL}/api/signup`, {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/signup`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

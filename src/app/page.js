@@ -17,7 +17,7 @@
       useEffect(() => {
         const checkSession = async () => {
           try {
-            const res = await fetch("http://localhost:4000/api/session", { method: "GET", credentials: "include" });
+            const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/session`, { method: "GET", credentials: "include" });
             console.log(res)
             const data = await res.json();
             if (!data.user || !data.token) {
@@ -26,11 +26,11 @@
             }
             setCurrentUser(data.user);
 
-            const usersRes = await fetch("http://localhost:4000/api/users", { credentials: "include" });
+            const usersRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/users`, { credentials: "include" });
             const usersData = await usersRes.json();
             setUsers(usersData.users || []);
 
-          const socket = new WebSocket(`ws://localhost:4000?token=${data.token}`);
+          const socket = new WebSocket(`ws://${process.env.NEXT_PUBLIC_HOST}?token=${data.token}`);
             socket.onopen = () => console.log("✅ Connected to chat");
             socket.onmessage = (event) => {
               const msg = JSON.parse(event.data);
@@ -63,7 +63,7 @@
 
       const handleSelect = async (user) => {
         setSelectedUser(user);
-        const res = await fetch(`${process.env.APP_URL}/api/messages/${user._id}`,{method:'GET', credentials:"include"});
+        const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/messages/${user._id}`,{method:'GET', credentials:"include"});
         const data = await res.json();
         setMessages(data.messages || []);
       };
@@ -73,7 +73,7 @@
     if (!file || !selectedUser) return;
     const formData = new FormData();
     formData.append("file", file);
-    const res = await fetch(`${process.env.APP_URL}/api/upload`, { method: "POST", body: formData });
+    const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/upload`, { method: "POST", body: formData });
     const data = await res.json();
     console.log(data)
     if (ws) {
