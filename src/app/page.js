@@ -63,7 +63,7 @@
 
       const handleSelect = async (user) => {
         setSelectedUser(user);
-        const res = await fetch(`http://localhost:4000/api/messages/${user._id}`,{method:'GET', credentials:"include"});
+        const res = await fetch(`${process.env.APP_URL}/api/messages/${user._id}`,{method:'GET', credentials:"include"});
         const data = await res.json();
         setMessages(data.messages || []);
       };
@@ -73,7 +73,7 @@
     if (!file || !selectedUser) return;
     const formData = new FormData();
     formData.append("file", file);
-    const res = await fetch("http://localhost:4000/api/upload", { method: "POST", body: formData });
+    const res = await fetch(`${process.env.APP_URL}/api/upload`, { method: "POST", body: formData });
     const data = await res.json();
     console.log(data)
     if (ws) {

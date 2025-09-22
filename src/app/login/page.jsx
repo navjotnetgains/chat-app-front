@@ -17,7 +17,7 @@ const LoginPage = () => {
   const handleSubmit = async () => {
     setError("");
 
-    const res = await fetch('http://localhost:4000/api/login', {
+    const res = await fetch(`${process.env.APP_URL}/api/login`, {
       method: "POST",
       headers: {
       "Content-Type": "application/json",
