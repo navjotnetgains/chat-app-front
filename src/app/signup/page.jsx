@@ -24,6 +24,7 @@ const SignupPage = () => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(form),
+       credentials: "include",
     });
 
     const result = await res.json();
